@@ -82,7 +82,7 @@ class KnownValues(unittest.TestCase):
     def test_orth_get_pp(self):
         ref = df.FFTDF(cell_orth).get_pp()
         out = multigrid.MultiGridFFTDF(cell_orth).get_pp()
-        self.assertAlmostEqual(abs(ref-out).max(), 0, 9)
+        self.assertAlmostEqual(abs(ref-out).max(), 0, 8)
 
     def test_nonorth_get_pp(self):
         ref = df.FFTDF(cell_nonorth).get_pp()
@@ -110,7 +110,7 @@ class KnownValues(unittest.TestCase):
     def test_nonorth_get_j(self):
         ref = df.FFTDF(cell_nonorth).get_jk(dm[0], with_k=False)[0]
         out = multigrid.MultiGridFFTDF(cell_nonorth).get_jk(dm)[0]
-        self.assertAlmostEqual(abs(ref-out).max(), 0, 9)
+        self.assertAlmostEqual(abs(ref-out).max(), 0, 8)
 
     def test_orth_rks_lda_kpts(self):
         xc = 'lda,'
@@ -119,8 +119,8 @@ class KnownValues(unittest.TestCase):
         n, exc0, ref = ni.nr_rks(cell_orth, mydf.grids, xc, dm, 0, kpts=kpts)
         mydf = multigrid.MultiGridFFTDF(cell_orth)
         n, exc1, vxc = multigrid.nr_rks(mydf, xc, dm, kpts=kpts)
-        self.assertAlmostEqual(float(abs(ref-vxc).max()), 0, 9)
-        self.assertAlmostEqual(abs(exc0-exc1).max(), 0, 8)
+        self.assertAlmostEqual(float(abs(ref-vxc).max()), 0, 8)
+        self.assertAlmostEqual(abs(exc0-exc1).max(), 0, 7)
 
     def test_multigrid_kuks(self):
         mf = dft.KUKS(cell_he)
@@ -196,8 +196,8 @@ class KnownValues(unittest.TestCase):
         ref += mydf.get_jk(dm, hermi=1, with_k=False, kpts=kpts)[0]
         mydf = multigrid.MultiGridFFTDF(cell_orth)
         n, exc1, vxc = multigrid.nr_rks(mydf, xc, dm, hermi=1, kpts=kpts, with_j=True)
-        self.assertAlmostEqual(float(abs(ref-vxc).max()), 0, 9)
-        self.assertAlmostEqual(abs(exc0-exc1).max(), 0, 8)
+        self.assertAlmostEqual(float(abs(ref-vxc).max()), 0, 8)
+        self.assertAlmostEqual(abs(exc0-exc1).max(), 0, 7)
 
     def test_orth_uks_lda_hermi0(self):
         xc = 'lda,'
@@ -423,8 +423,8 @@ class KnownValues(unittest.TestCase):
             mg_df = multigrid.MultiGridFFTDF(cell_orth)
             n2, exc2, v2 = multigrid.nr_rks(mg_df, xc, dm1, kpts=kpts)
             self.assertEqual(len(mg_df.tasks), 6)
-        self.assertAlmostEqual(n1, n2, 8)
-        self.assertAlmostEqual(exc1, exc2, 8)
+        self.assertAlmostEqual(n1, n2, 7)
+        self.assertAlmostEqual(exc1, exc2, 7)
         self.assertAlmostEqual(abs(v1-v2).max(), 0, 8)
 
 
