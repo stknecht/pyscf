@@ -936,7 +936,7 @@ To enable the solvent model for CASSCF, the following code needs to be called
             )
         return self
 
-    def kernel(self, mo_coeff=None, ci0=None, callback=None, _kern=kernel):
+    def kernel(self, mo_coeff=None, ci0=None, callback=None, _kern=kernel, initial_state=None):
         """
         Returns:
             Five elements, they are
