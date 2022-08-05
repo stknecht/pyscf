@@ -9,7 +9,7 @@ from pyscf.lib import logger
 
 
 from pyscf.mcscf import custom_casci as casci
-from pyscf.mcscf.casci import get_fock, cas_natorb, canonicalize
+from pyscf.mcscf.custom_casci import get_fock, cas_natorb, canonicalize
 from pyscf.mcscf import mc_ao2mo
 from pyscf.mcscf import chkfile
 from pyscf import ao2mo
@@ -936,7 +936,7 @@ To enable the solvent model for CASSCF, the following code needs to be called
             )
         return self
 
-    def kernel(self, mo_coeff=None, ci0=None, callback=None, _kern=kernel):
+    def kernel(self, mo_coeff=None, ci0=None, callback=None, _kern=kernel, initial_state=None):
         """
         Returns:
             Five elements, they are
