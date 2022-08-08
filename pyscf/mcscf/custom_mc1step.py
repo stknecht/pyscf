@@ -3,10 +3,10 @@ import sys
 import copy
 from functools import reduce
 import numpy
+import matplotlib.pyplot as plt
 import scipy.linalg
 from pyscf import lib
 from pyscf.lib import logger
-
 
 from pyscf.mcscf import custom_casci as casci
 from pyscf.mcscf.custom_casci import get_fock, cas_natorb, canonicalize
@@ -26,7 +26,38 @@ WITH_STEPSIZE_SCHEDULER = getattr(
 )
 
 # ref. JCP, 82, 5053 (1985); DOI: 10.1063/1.448627 and JCP 73, 2342 (1980); DOI:10.1063/1.440384
+def plot_convergence(iters,energies,cnots,reference, filepath=None):
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 7))
+    fig.suptitle("Convergence of VQE-SCF", size=20)
+    error = abs(numpy.array(energies) - reference)
+    ax1.set_title("Error V Iterations")
+    ax1.plot(iters, error, label='Error')
+    for i in iters:
+        ax1.scatter(i, error[i], color='r')
+        ax1.annotate(i, (i, error[i]))
 
+    ax1.axhline(y = 0.0016, label = 'Chemical accuracy', linestyle = '-.', color = 'k')
+
+    ax1.set_xlabel('Iterations')
+    ax1.set_ylabel(r'Error $\Delta E$')
+    ax1.set_yscale('log')
+    ax1.legend()
+    
+    ax2.set_title('Error V CNOTs')
+    
+    ax2.plot(cnots[0], error, label = 'Error')
+    for i in iters:
+        ax2.scatter(cnots[0][i], error[i], color='r')
+        ax2.annotate(cnots[0][i], (cnots[0][i], error[i]))
+
+    ax2.axhline(y = 0.0016, label = 'Chemical accuracy', linestyle = '-.', color = 'k')
+    ax2.set_xlabel('CNOTs')
+    ax2.set_ylabel(r'Error $\Delta E$')
+    ax2.set_yscale('log')
+    ax2.legend()
+    if filepath is not None:
+        plt.savefig(filepath)
+    plt.show()
 # gradients, hessian operator and hessian diagonal
 def gen_g_hop(casscf, mo, u, casdm1, casdm2, eris):
     ncas = casscf.ncas
@@ -369,8 +400,6 @@ def kernel(
     initial_state=None,
 ):
     """quasi-newton CASSCF optimization driver"""
-    cnots = []
-    energies = []
     from pyscf.mcscf.addons import StateAverageMCSCFSolver
 
     log = logger.new_logger(casscf, verbose)
@@ -389,6 +418,8 @@ def kernel(
     e_tot, e_cas, fcivec, circ = casscf.casci(
         mo, ci0, eris, log, locals(), initial_state=initial_state
     )
+    casscf.energies.append(e_cas)
+    casscf.cnots.append(casscf.fcisolver.cnots)
 
     if conv_tol_grad is None:
         conv_tol_grad = numpy.sqrt(tol)
@@ -407,7 +438,7 @@ def kernel(
     t3m = t2m = log.timer("CAS DM", *t1m)
     imacro = 0
     dr0 = None
-    casscf.fcisolver.kernel_max_iters = 1
+    #casscf.fcisolver.kernel_max_iters = 1
     while not conv and imacro < casscf.max_cycle_macro:
         imacro += 1
         max_cycle_micro = casscf.micro_cycle_scheduler(locals())
@@ -508,6 +539,8 @@ def kernel(
         e_tot, e_cas, fcivec, circ = casscf.casci(
             mo, fcivec, eris, log, locals(), initial_state=circ1
         )
+        casscf.energies.append(e_cas)
+        casscf.cnots.append(casscf.fcisolver.cnots)
         casdm1, casdm2 = casscf.fcisolver.make_rdm12(fcivec, ncas, casscf.nelecas)
         # norm_ddm = numpy.linalg.norm(casdm1 - casdm1_last)
         # casdm1_prev = casdm1_last = casdm1
@@ -568,6 +601,7 @@ def kernel(
         casscf.dump_chk(locals())
 
     log.timer("1-step CASSCF", *cput0)
+    casscf.macro_iters = numpy.arange(imacro+1)
     return conv, e_tot, e_cas, fcivec, mo, mo_energy, circ
 
 
@@ -833,7 +867,9 @@ class CASSCF(casci.CASCI):
         self.mo_energy = self._scf.mo_energy
         self.converged = False
         self._max_stepsize = None
-
+        self.energies = []
+        self.cnots = []
+        self.macro_iters = None
         keys = set(
             (
                 "max_stepsize",
@@ -936,7 +972,7 @@ To enable the solvent model for CASSCF, the following code needs to be called
             )
         return self
 
-    def kernel(self, mo_coeff=None, ci0=None, callback=None, _kern=kernel, initial_state=None):
+    def kernel(self, mo_coeff=None, ci0=None, callback=None, _kern=kernel, initial_state = None):
         """
         Returns:
             Five elements, they are
@@ -975,14 +1011,21 @@ To enable the solvent model for CASSCF, the following code needs to be called
             ci0=ci0,
             callback=callback,
             verbose=self.verbose,
-            initial_state=None,
+            initial_state=initial_state,
         )
         logger.note(self, "CASSCF energy = %.15g", self.e_tot)
         self._finalize()
         return self.e_tot, self.e_cas, self.ci, self.mo_coeff, self.mo_energy, self.circ
+    
+    def plot_convergence(self, filepath:str = None):
+        return plot_convergence(self.macro_iters,self.energies,self.cnots,self.fcisolver.reference_energy, filepath)
 
     def mc1step(self, mo_coeff=None, ci0=None, callback=None):
         return self.kernel(mo_coeff, ci0, callback)
+    
+    def mc2step(self, mo_coeff=None, ci0=None, callback=None):
+        import custom_mc2step
+        return self.kernel(mo_coeff, ci0, callback, custom_mc2step.kernel)
 
     def casci(
         self, mo_coeff, ci0=None, eris=None, verbose=None, envs=None, initial_state=None
