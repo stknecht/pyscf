@@ -155,6 +155,7 @@ setup(
     install_requires=['numpy>=1.13,!=1.16,!=1.17',
                       #'scipy<=1.1.0' if sys.platform == "darwin" else 'scipy!=1.5.0,!=1.5.1',
                       'scipy!=1.5.0,!=1.5.1',
+                      'cmake>=3.5',
                       'h5py>=2.7'],
     extras_require=EXTRAS,
 )
